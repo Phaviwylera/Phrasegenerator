@@ -1,14 +1,10 @@
 import os
-import io
 import secrets
 import hashlib
-import urllib.request
-from flask import Flask, request, render_template_string, send_file, abort
+from flask import Flask, request, render_template_string, Response, abort
 
 app = Flask(__name__)
 
-WORDLIST_URL = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt"
-MAX_COUNT = 100000  # safety cap so one request can't crash the server
 _wordlist = None
 
 
@@ -19,15 +15,12 @@ def get_wordlist():
         return _wordlist
 
     local_path = os.path.join(os.path.dirname(__file__), "english.txt")
-    if os.path.exists(local_path):
-        with open(local_path, "r", encoding="utf-8") as f:
-            _wordlist = f.read().split()
-    else:
-        with urllib.request.urlopen(WORDLIST_URL, timeout=20) as resp:
-            _wordlist = resp.read().decode("utf-8").split()
+    with open(local_path, "r", encoding="utf-8") as f:
+        words = f.read().split()
 
-    if len(_wordlist) != 2048:
-        raise RuntimeError(f"Expected 2048 BIP-39 words, got {len(_wordlist)}")
+    if len(words) != 2048:
+        raise RuntimeError(f"Expected 2048 BIP-39 words, got {len(words)}")
+    _wordlist = words
     return _wordlist
 
 
@@ -69,7 +62,7 @@ HTML_PAGE = """
   <h1>BIP-39 12-Word Phrase Generator</h1>
   <form method="post">
     <label for="count">Number of phrases:</label>
-    <input type="number" id="count" name="count" min="1" max="{{ max_count }}" value="10" required>
+    <input type="number" id="count" name="count" min="1" step="1" value="10" required>
     <button type="submit">Generate &amp; Download TXT</button>
   </form>
   <div class="warning">
@@ -80,6 +73,12 @@ HTML_PAGE = """
 """
 
 
+@app.get("/health")
+def health():
+    get_wordlist()
+    return "ok\n"
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -88,23 +87,28 @@ def index():
         except (TypeError, ValueError):
             abort(400, "Invalid count")
 
-        if count < 1 or count > MAX_COUNT:
-            abort(400, f"Count must be between 1 and {MAX_COUNT}")
+        if count < 1:
+            abort(400, "Count must be at least 1")
 
         wordlist = get_wordlist()
-        lines = [generate_phrase(wordlist) for _ in range(count)]
-        content = "\n".join(lines) + "\n"
 
-        buf = io.BytesIO(content.encode("utf-8"))
-        buf.seek(0)
-        return send_file(
-            buf,
+        def phrase_chunks():
+            remaining = count
+            while remaining:
+                batch_size = min(remaining, 256)
+                yield "".join(generate_phrase(wordlist) + "\n" for _ in range(batch_size))
+                remaining -= batch_size
+
+        return Response(
+            phrase_chunks(),
             mimetype="text/plain",
-            as_attachment=True,
-            download_name=f"bip39_{count}_phrases.txt",
+            headers={
+                "Content-Disposition": f'attachment; filename="bip39_{count}_phrases.txt"',
+                "Cache-Control": "no-store",
+            },
         )
 
-    return render_template_string(HTML_PAGE, max_count=MAX_COUNT)
+    return render_template_string(HTML_PAGE)
 
 
 if __name__ == "__main__":

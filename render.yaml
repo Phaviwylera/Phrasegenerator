@@ -1,9 +1,10 @@
 services:
   - type: web
     name: bip39-generator
-    env: python
+    runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --worker-class gthread --threads 4 --bind 0.0.0.0:${PORT:-10000} app:app
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.11
