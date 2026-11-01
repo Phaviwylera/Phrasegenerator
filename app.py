@@ -2,12 +2,10 @@ import os
 import io
 import secrets
 import hashlib
-import urllib.request
 from flask import Flask, request, render_template_string, send_file, abort
 
 app = Flask(__name__)
 
-WORDLIST_URL = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt"
 MAX_COUNT = 100000  # safety cap so one request can't crash the server
 _wordlist = None
 
@@ -19,15 +17,12 @@ def get_wordlist():
         return _wordlist
 
     local_path = os.path.join(os.path.dirname(__file__), "english.txt")
-    if os.path.exists(local_path):
-        with open(local_path, "r", encoding="utf-8") as f:
-            _wordlist = f.read().split()
-    else:
-        with urllib.request.urlopen(WORDLIST_URL, timeout=20) as resp:
-            _wordlist = resp.read().decode("utf-8").split()
+    with open(local_path, "r", encoding="utf-8") as f:
+        words = f.read().split()
 
-    if len(_wordlist) != 2048:
-        raise RuntimeError(f"Expected 2048 BIP-39 words, got {len(_wordlist)}")
+    if len(words) != 2048:
+        raise RuntimeError(f"Expected 2048 BIP-39 words, got {len(words)}")
+    _wordlist = words
     return _wordlist
 
 
@@ -78,6 +73,12 @@ HTML_PAGE = """
 </body>
 </html>
 """
+
+
+@app.get("/health")
+def health():
+    get_wordlist()
+    return "ok\n"
 
 
 @app.route("/", methods=["GET", "POST"])
