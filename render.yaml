@@ -3,7 +3,7 @@ services:
     name: bip39-generator
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:${PORT:-10000} app:app
+    startCommand: gunicorn --worker-class gthread --threads 4 --bind 0.0.0.0:${PORT:-10000} app:app
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

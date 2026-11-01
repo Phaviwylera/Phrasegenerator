@@ -11,7 +11,7 @@ The repository includes a Render Blueprint (`render.yaml`). To deploy with it:
 3. Review the proposed `bip39-generator` web service and apply the Blueprint. Render will install `requirements.txt`, run Gunicorn bound to Render's `PORT`, and check `/health`.
 4. Open the service URL shown by Render. `/health` should respond with `ok`, and the home page should show the generator.
 
-Alternatively, choose **New** → **Web Service**, connect this repository, and select the branch you want to deploy. Use **Python** as the runtime, `pip install -r requirements.txt` as the build command, and `gunicorn --bind 0.0.0.0:${PORT:-10000} app:app` as the start command. Set the health check path to `/health`. A manually created Web Service does **not** automatically apply the settings in `render.yaml`.
+Alternatively, choose **New** → **Web Service**, connect this repository, and select the branch you want to deploy. Use **Python** as the runtime, `pip install -r requirements.txt` as the build command, and `gunicorn --worker-class gthread --threads 4 --bind 0.0.0.0:${PORT:-10000} app:app` as the start command. Set the health check path to `/health`. A manually created Web Service does **not** automatically apply the settings in `render.yaml`.
 
 If deploying from a feature branch, make sure Render is configured to deploy that branch; changing the GitHub default branch alone will not deploy these changes to an existing service.
 
@@ -20,14 +20,14 @@ If deploying from a feature branch, make sure Render is configured to deploy tha
 ```sh
 pip install -r requirements.txt
 python -m unittest discover -s tests
-PORT=5000 sh -c 'gunicorn --bind 0.0.0.0:${PORT:-10000} app:app'
+PORT=5000 sh -c 'gunicorn --worker-class gthread --threads 4 --bind 0.0.0.0:${PORT:-10000} app:app'
 ```
 
 Visit `http://localhost:5000/health` to check readiness, or `http://localhost:5000/` to generate a text file.
 
 ## Usage
 
-Open the deployed URL, enter a number, and download the phrases as `bip39_N_phrases.txt`.
+Open the deployed URL, enter a positive number, and download the phrases as `bip39_N_phrases.txt`. There is no application-imposed maximum; the download streams in batches instead of buffering every phrase in memory. Extremely large downloads can still be interrupted by hosting, browser, or network time and resource limits.
 
 ## ⚠️ Security warning
 

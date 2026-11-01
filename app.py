@@ -1,12 +1,10 @@
 import os
-import io
 import secrets
 import hashlib
-from flask import Flask, request, render_template_string, send_file, abort
+from flask import Flask, request, render_template_string, Response, abort
 
 app = Flask(__name__)
 
-MAX_COUNT = 100000  # safety cap so one request can't crash the server
 _wordlist = None
 
 
@@ -64,7 +62,7 @@ HTML_PAGE = """
   <h1>BIP-39 12-Word Phrase Generator</h1>
   <form method="post">
     <label for="count">Number of phrases:</label>
-    <input type="number" id="count" name="count" min="1" max="{{ max_count }}" value="10" required>
+    <input type="number" id="count" name="count" min="1" step="1" value="10" required>
     <button type="submit">Generate &amp; Download TXT</button>
   </form>
   <div class="warning">
@@ -89,23 +87,28 @@ def index():
         except (TypeError, ValueError):
             abort(400, "Invalid count")
 
-        if count < 1 or count > MAX_COUNT:
-            abort(400, f"Count must be between 1 and {MAX_COUNT}")
+        if count < 1:
+            abort(400, "Count must be at least 1")
 
         wordlist = get_wordlist()
-        lines = [generate_phrase(wordlist) for _ in range(count)]
-        content = "\n".join(lines) + "\n"
 
-        buf = io.BytesIO(content.encode("utf-8"))
-        buf.seek(0)
-        return send_file(
-            buf,
+        def phrase_chunks():
+            remaining = count
+            while remaining:
+                batch_size = min(remaining, 256)
+                yield "".join(generate_phrase(wordlist) + "\n" for _ in range(batch_size))
+                remaining -= batch_size
+
+        return Response(
+            phrase_chunks(),
             mimetype="text/plain",
-            as_attachment=True,
-            download_name=f"bip39_{count}_phrases.txt",
+            headers={
+                "Content-Disposition": f'attachment; filename="bip39_{count}_phrases.txt"',
+                "Cache-Control": "no-store",
+            },
         )
 
-    return render_template_string(HTML_PAGE, max_count=MAX_COUNT)
+    return render_template_string(HTML_PAGE)
 
 
 if __name__ == "__main__":

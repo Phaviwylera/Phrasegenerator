@@ -18,7 +18,10 @@ class AppTests(unittest.TestCase):
 
     def test_health_and_home(self):
         self.assertEqual(self.client.get("/health").data, b"ok\n")
-        self.assertEqual(self.client.get("/").status_code, 200)
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'input type="number"', response.data)
+        self.assertNotIn(b'max="100000"', response.data)
 
     def test_download(self):
         response = self.client.post("/", data={"count": "2"})
@@ -26,8 +29,18 @@ class AppTests(unittest.TestCase):
         self.assertIn("bip39_2_phrases.txt", response.headers["Content-Disposition"])
         self.assertEqual(len(response.data.decode().strip().splitlines()), 2)
 
+    def test_large_download_starts_streaming(self):
+        with patch("app.generate_phrase", return_value="test phrase") as generate:
+            response = self.client.post("/", data={"count": "100001"}, buffered=False)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("bip39_100001_phrases.txt", response.headers["Content-Disposition"])
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(next(response.response).count(b"test phrase\n"), 256)
+            self.assertLessEqual(generate.call_count, 256)
+            response.close()
+
     def test_invalid_counts(self):
-        for count in ("not-a-number", "0", "100001"):
+        for count in ("not-a-number", "0", "-1", ""):
             with self.subTest(count=count):
                 self.assertEqual(self.client.post("/", data={"count": count}).status_code, 400)
 
