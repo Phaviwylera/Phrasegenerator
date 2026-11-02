@@ -22,6 +22,12 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'input type="number"', response.data)
         self.assertNotIn(b'max="100000"', response.data)
+        self.assertIn(b'id="address-export-form"', response.data)
+        self.assertIn(b'/static/address-export.js', response.data)
+        self.assertIn(b'accept=".txt,text/plain"', response.data)
+        asset = self.client.get('/static/address-export.js')
+        self.assertEqual(asset.status_code, 200)
+        asset.close()
 
     def test_download(self):
         response = self.client.post("/", data={"count": "2"})

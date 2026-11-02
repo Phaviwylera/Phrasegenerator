@@ -23,11 +23,13 @@ python -m unittest discover -s tests
 PORT=5000 sh -c 'gunicorn --worker-class gthread --threads 4 --bind 0.0.0.0:${PORT:-10000} app:app'
 ```
 
-Visit `http://localhost:5000/health` to check readiness, or `http://localhost:5000/` to generate a text file.
+Visit `http://localhost:5000/health` to check readiness, or `http://localhost:5000/` to generate a text file. For changes to the address-export JavaScript, run `npm ci && npm test && npm run build` and commit the generated `static/address-export.js`. Render serves that checked-in bundle; it does not need Node at deploy time.
 
 ## Usage
 
 Open the deployed URL, enter a positive number, and download the phrases as `bip39_N_phrases.txt`. There is no application-imposed maximum; the download streams in batches instead of buffering every phrase in memory. Extremely large downloads can still be interrupted by hosting, browser, or network time and resource limits.
+
+Below the generator, select that **TXT** file to download a CSV of public addresses. The TXT must have one valid English BIP-39 12-word phrase per line; invalid lines are reported by line number without exposing their words in the CSV. The file is processed **in the browser**, never uploaded to Flask. The CSV contains the first native SegWit BTC address (`m/84'/0'/0'/0/0`) and the first Ethereum/BNB Smart Chain/Base EVM address (`m/44'/60'/0'/0/0`). Those three EVM networks use the **same 0x address** for the same account; they appear in separate columns for clarity. Balances are not checked. This feature supports TXT, not PDF or scanned images; very large files can take longer than a minute to process.
 
 ## ⚠️ Security warning
 
