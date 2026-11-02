@@ -54,10 +54,11 @@ HTML_PAGE = """
   form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 24px; }
   input[type="number"] { padding: 10px; font-size: 1rem; width: 140px; }
   input[type="file"] { max-width: 100%; }
+  input[type="text"] { padding: 10px; font-size: 1rem; width: min(100%, 440px); box-sizing: border-box; }
   section { border-top: 1px solid #ddd; padding-top: 16px; margin-top: 24px; }
   h2 { font-size: 1.2rem; }
   .note { color: #444; line-height: 1.5; }
-  #export-status { min-height: 1.5em; }
+  #export-status, #lookup-status { min-height: 1.5em; }
   button:disabled { opacity: 0.6; cursor: wait; }
   button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 6px; }
   button:hover { background: #0052a3; }
@@ -82,6 +83,14 @@ HTML_PAGE = """
     </form>
     <p id="export-status" role="status" aria-live="polite"></p>
     <p class="note">Address derivation happens entirely in your browser; the selected TXT file is never uploaded to the server. Invalid phrases are marked by line number and skipped. The CSV contains public addresses only, not recovery phrases or private keys. Large files may take longer than a minute.</p>
+    <h2>Find a phrase in your TXT by public address</h2>
+    <p class="note">Select your <strong>original phrase TXT</strong> above, then enter a BTC address or an Ethereum/BNB Smart Chain/Base address from the CSV. The browser checks the phrases in your file and downloads the first match as a sensitive TXT. It cannot recover words from an address alone, or from the addresses CSV without the original phrase TXT.</p>
+    <form id="phrase-lookup-form">
+      <label for="lookup-address">Public address:</label>
+      <input type="text" id="lookup-address" placeholder="bc1q… or 0x…" autocomplete="off" spellcheck="false" required>
+      <button id="phrase-lookup-button" type="submit">Find &amp; Download Matching Phrase</button>
+    </form>
+    <p id="lookup-status" role="status" aria-live="polite"></p>
   </section>
   <div class="warning">
     <strong>Security warning:</strong> These phrases are generated on demand. Do NOT use them for real cryptocurrency wallets unless you trust this deployment and generate them privately. Anyone who obtains a phrase can steal the associated funds. For real wallets, generate your seed phrase offline with your own wallet software. Do not import a real wallet's recovery phrase into this hosted site.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveAddresses, exportAddresses } from './address-export.js';
+import { deriveAddresses, exportAddresses, findPhraseForAddress } from './address-export.js';
 
 const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 
@@ -31,4 +31,20 @@ test('CSV contains public addresses, line numbers and no secret phrases', async 
 
 test('empty TXT does not produce a download', async () => {
   await assert.rejects(exportAddresses({ text: async () => '\n  \n' }), /empty/);
+});
+
+test('finds the matching phrase from the original TXT for BTC or EVM addresses', async () => {
+  const other = 'test test test test test test test test test test test junk';
+  const file = { text: async () => `${mnemonic}\ninvalid phrase\n${other}\n` };
+  const btc = await findPhraseForAddress(file, 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
+  assert.deepEqual(btc, { phrase: mnemonic, line: 1 });
+  const eth = await findPhraseForAddress(file, '0XF39FD6E51AAD88F6F4CE6AB8827279CFFFB92266');
+  assert.deepEqual(eth, { phrase: other, line: 3 });
+});
+
+test('does not invent a phrase for an address absent from the file', async () => {
+  const file = { text: async () => mnemonic + '\n' };
+  assert.equal(await findPhraseForAddress(file, '0x0000000000000000000000000000000000000000'), null);
+  await assert.rejects(findPhraseForAddress(file, 'bc1qnot-a-valid-address'), /Enter a BTC/);
+  await assert.rejects(findPhraseForAddress(file, 'not-an-address'), /Enter a BTC/);
 });
