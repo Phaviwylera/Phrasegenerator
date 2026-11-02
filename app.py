@@ -47,11 +47,19 @@ HTML_PAGE = """
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BIP-39 Phrase Generator</title>
+<script src="/static/address-export.js" defer></script>
 <style>
   body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 48px auto; padding: 0 20px; }
   h1 { font-size: 1.5rem; margin-bottom: 16px; }
-  form { display: flex; gap: 8px; align-items: center; margin-bottom: 24px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 24px; }
   input[type="number"] { padding: 10px; font-size: 1rem; width: 140px; }
+  input[type="file"] { max-width: 100%; }
+  input[type="text"] { padding: 10px; font-size: 1rem; width: min(100%, 440px); box-sizing: border-box; }
+  section { border-top: 1px solid #ddd; padding-top: 16px; margin-top: 24px; }
+  h2 { font-size: 1.2rem; }
+  .note { color: #444; line-height: 1.5; }
+  #export-status, #lookup-status { min-height: 1.5em; }
+  button:disabled { opacity: 0.6; cursor: wait; }
   button { padding: 10px 20px; font-size: 1rem; cursor: pointer; background: #0066cc; color: white; border: none; border-radius: 6px; }
   button:hover { background: #0052a3; }
   .warning { background: #fff3cd; border: 1px solid #ffd299; color: #7a5a00; padding: 12px; border-radius: 6px; margin-top: 24px; font-size: 0.9rem; }
@@ -65,8 +73,27 @@ HTML_PAGE = """
     <input type="number" id="count" name="count" min="1" step="1" value="10" required>
     <button type="submit">Generate &amp; Download TXT</button>
   </form>
+  <section aria-labelledby="address-title">
+    <h2 id="address-title">Download public addresses from a phrase TXT file</h2>
+    <p class="note">Select the TXT file downloaded above (one 12-word phrase per line). The CSV contains a native SegWit Bitcoin address and Ethereum, BNB Smart Chain, and Base addresses for each valid phrase. Ethereum, BNB Smart Chain, and Base use the same address for the standard EVM account path. This does not check balances.</p>
+    <form id="address-export-form">
+      <label for="phrase-file">Phrase TXT file:</label>
+      <input type="file" id="phrase-file" accept=".txt,text/plain" required>
+      <button id="address-export-button" type="submit">Derive &amp; Download Addresses CSV</button>
+    </form>
+    <p id="export-status" role="status" aria-live="polite"></p>
+    <p class="note">Address derivation happens entirely in your browser; the selected TXT file is never uploaded to the server. Invalid phrases are marked by line number and skipped. The CSV contains public addresses only, not recovery phrases or private keys. Large files may take longer than a minute.</p>
+    <h2>Find a phrase in your TXT by public address</h2>
+    <p class="note">Select your <strong>original phrase TXT</strong> above, then enter a BTC address or an Ethereum/BNB Smart Chain/Base address from the CSV. The browser checks the phrases in your file and downloads the first match as a sensitive TXT. It cannot recover words from an address alone, or from the addresses CSV without the original phrase TXT.</p>
+    <form id="phrase-lookup-form">
+      <label for="lookup-address">Public address:</label>
+      <input type="text" id="lookup-address" placeholder="bc1q… or 0x…" autocomplete="off" spellcheck="false" required>
+      <button id="phrase-lookup-button" type="submit">Find &amp; Download Matching Phrase</button>
+    </form>
+    <p id="lookup-status" role="status" aria-live="polite"></p>
+  </section>
   <div class="warning">
-    <strong>Security warning:</strong> These phrases are generated on demand. Do NOT use them for real cryptocurrency wallets unless you trust this deployment and generate them privately. Anyone who obtains a phrase can steal the associated funds. For real wallets, generate your seed phrase offline with your own wallet software.
+    <strong>Security warning:</strong> These phrases are generated on demand. Do NOT use them for real cryptocurrency wallets unless you trust this deployment and generate them privately. Anyone who obtains a phrase can steal the associated funds. For real wallets, generate your seed phrase offline with your own wallet software. Do not import a real wallet's recovery phrase into this hosted site.
   </div>
 </body>
 </html>
