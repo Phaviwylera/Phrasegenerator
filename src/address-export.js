@@ -40,26 +40,26 @@ export function deriveAddresses(phrase) {
   const uncompressed = secp256k1.ProjectivePoint.fromHex(evmPublicKey).toRawBytes(false);
   const evm = checksumAddress(keccak_256(uncompressed.slice(1)).slice(-20));
 
-  // ETH, BNB Smart Chain (BEP-20), and Base use the same EVM key/address here.
-  return { btc, eth: evm, bnbSmartChain: evm, base: evm };
+  // One EVM address works on Ethereum, BNB Smart Chain (BEP-20), and Base.
+  return { btc, evm };
 }
 
 export async function exportAddresses(file, onProgress = () => {}) {
   // Never include mnemonic words in the export, only line numbers and public addresses.
   const lines = (await file.text()).split(/\r?\n/);
-  const rows = ['phrase_line,btc_native_segwit,ethereum,bnb_smart_chain,base,status'];
+  const rows = ['phrase_line,btc_native_segwit,evm'];
   let valid = 0;
   let invalid = 0;
 
   for (let index = 0; index < lines.length; index++) {
     if (!lines[index].trim()) continue;
     try {
-      const { btc, eth, bnbSmartChain, base } = deriveAddresses(lines[index]);
-      rows.push(`${index + 1},${btc},${eth},${bnbSmartChain},${base},ok`);
+      const { btc, evm } = deriveAddresses(lines[index]);
+      rows.push(`${index + 1},${btc},${evm}`);
       valid++;
     } catch (error) {
       if (error.message !== 'Invalid 12-word BIP-39 phrase') throw error;
-      rows.push(`${index + 1},,,,,invalid BIP-39 phrase`);
+      // Skip invalid lines to keep the export small; valid rows retain source line numbers.
       invalid++;
     }
     if ((valid + invalid) % 10 === 0) {
@@ -70,7 +70,8 @@ export async function exportAddresses(file, onProgress = () => {}) {
   }
 
   if (valid + invalid === 0) throw new Error('The selected TXT file is empty.');
-  return { csv: rows.join('\r\n') + '\r\n', valid, invalid };
+  if (valid === 0) throw new Error('No valid 12-word BIP-39 phrases found in the TXT file.');
+  return { csv: rows.join('\n') + '\n', valid, invalid };
 }
 
 function normalizeLookupAddress(address) {
@@ -103,7 +104,7 @@ export async function findPhraseForAddress(file, address, onProgress = () => {})
       continue;
     }
     processed++;
-    const derivedAddress = target.kind === 'btc' ? derived.btc : derived.eth;
+    const derivedAddress = target.kind === 'btc' ? derived.btc : derived.evm;
     if (derivedAddress.toLowerCase() === target.value) {
       return { phrase: lines[index].trim().toLowerCase().replace(/\s+/g, ' '), line: index + 1 };
     }
@@ -148,7 +149,7 @@ function setupExportUI() {
         status.textContent = message;
       });
       downloadLocalFile(csv, 'text/csv;charset=utf-8', `addresses_${file.name.replace(/\.txt$/i, '')}.csv`);
-      status.textContent = `Download ready: ${valid} valid, ${invalid} invalid phrase(s). Invalid rows have no addresses. No phrases were uploaded or included in the CSV.`;
+      status.textContent = `Download ready: ${valid} valid phrase(s), ${invalid} invalid line(s) skipped. CSV has one BTC and one EVM address per valid line. No phrases were uploaded or included.`;
     } catch (error) {
       status.textContent = error.message || 'Could not process the TXT file.';
     } finally {
