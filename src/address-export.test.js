@@ -7,9 +7,8 @@ const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abando
 test('derives known BIP84 and EVM addresses from a BIP-39 test vector', () => {
   const result = deriveAddresses(mnemonic);
   assert.equal(result.btc, 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu');
-  assert.equal(result.eth, '0x9858EfFD232B4033E47d90003D41EC34EcaEda94');
-  assert.equal(result.bnbSmartChain, result.eth);
-  assert.equal(result.base, result.eth);
+  assert.equal(result.evm, '0x9858EfFD232B4033E47d90003D41EC34EcaEda94');
+  assert.deepEqual(Object.keys(result), ['btc', 'evm']);
 });
 
 test('rejects a bad mnemonic and checksum', () => {
@@ -22,15 +21,18 @@ test('CSV contains public addresses, line numbers and no secret phrases', async 
   const { csv, valid, invalid } = await exportAddresses(file);
   assert.equal(valid, 2);
   assert.equal(invalid, 1);
-  assert.equal(csv.trim().split('\r\n').length, 4);
-  assert.match(csv, /^phrase_line,.*\r\n1,bc1qcr8te4kr/);
-  assert.match(csv, /2,,,,,invalid BIP-39 phrase/);
-  assert.match(csv, /3,bc1qcr8te4kr/);
+  const rows = csv.trim().split('\n');
+  assert.equal(rows.length, 3); // header + two valid phrases; invalid line is skipped
+  assert.equal(rows[0], 'phrase_line,btc_native_segwit,evm');
+  assert.equal(rows[1], '1,bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu,0x9858EfFD232B4033E47d90003D41EC34EcaEda94');
+  assert.equal(rows[2], '3,bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu,0x9858EfFD232B4033E47d90003D41EC34EcaEda94');
+  assert.ok(rows.every((row) => row.split(',').length === 3));
   assert.ok(!csv.includes(mnemonic));
 });
 
-test('empty TXT does not produce a download', async () => {
+test('empty or wholly invalid TXT does not produce an address file', async () => {
   await assert.rejects(exportAddresses({ text: async () => '\n  \n' }), /empty/);
+  await assert.rejects(exportAddresses({ text: async () => 'not a mnemonic\n' }), /No valid/);
 });
 
 test('finds the matching phrase from the original TXT for BTC or EVM addresses', async () => {

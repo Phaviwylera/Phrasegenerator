@@ -75,14 +75,14 @@ HTML_PAGE = """
   </form>
   <section aria-labelledby="address-title">
     <h2 id="address-title">Download public addresses from a phrase TXT file</h2>
-    <p class="note">Select the TXT file downloaded above (one 12-word phrase per line). The CSV contains a native SegWit Bitcoin address and Ethereum, BNB Smart Chain, and Base addresses for each valid phrase. Ethereum, BNB Smart Chain, and Base use the same address for the standard EVM account path. This does not check balances.</p>
+    <p class="note">Select the TXT file downloaded above (one 12-word phrase per line). The smaller CSV contains only two unique addresses per valid phrase: one native SegWit Bitcoin address and one EVM (0x) address. Use the EVM address on Ethereum, BNB Smart Chain, or Base; balances are separate on each network. This does not check balances.</p>
     <form id="address-export-form">
       <label for="phrase-file">Phrase TXT file:</label>
       <input type="file" id="phrase-file" accept=".txt,text/plain" required>
       <button id="address-export-button" type="submit">Derive &amp; Download Addresses CSV</button>
     </form>
     <p id="export-status" role="status" aria-live="polite"></p>
-    <p class="note">Address derivation happens entirely in your browser; the selected TXT file is never uploaded to the server. Invalid phrases are marked by line number and skipped. The CSV contains public addresses only, not recovery phrases or private keys. Large files may take longer than a minute.</p>
+    <p class="note">Address derivation happens entirely in your browser; the selected TXT file is never uploaded to the server. Invalid lines are skipped; valid CSV rows keep their original TXT line numbers. The CSV contains public addresses only, not recovery phrases or private keys. Large files may take longer than a minute.</p>
     <h2>Find a phrase in your TXT by public address</h2>
     <p class="note">Select your <strong>original phrase TXT</strong> above, then enter a BTC address or an Ethereum/BNB Smart Chain/Base address from the CSV. The browser checks the phrases in your file and downloads the first match as a sensitive TXT. It cannot recover words from an address alone, or from the addresses CSV without the original phrase TXT.</p>
     <form id="phrase-lookup-form">
